@@ -1,0 +1,18 @@
+/* ========================================================================
+   WIZARD STEP 1 — TYPE SELECTION REDESIGN
+
+   CSS is minimal here because the cards are fully rebuilt in JS
+   with inline styles. This file only handles:
+     1. The Next button hide (CSS sibling trick — no timing issues)
+     2. Any remaining monolith overrides
+   ======================================================================== */
+
+/* Hide the Next button whenever our type grid is present.
+   #taz-type-grid is injected before .wiz-nav by taz-overrides.js.
+   When the user selects a card, teardownStep1() removes #taz-type-grid,
+   and this rule stops applying — Next reappears automatically.         */
+#taz-type-grid ~ .wiz-nav > button:last-child,
+#taz-type-grid ~ .wiz-nav > button[class*="next"],
+#taz-type-grid ~ .wiz-nav > button[class*="Next"] {
+  display: none !important;
+}

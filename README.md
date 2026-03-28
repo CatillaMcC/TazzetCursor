@@ -109,6 +109,7 @@ Browser → POST /api/generate  →  server.js  →  api.anthropic.com/v1/messag
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No | Google sign-in |
 | `TAZZET_INVITE_CODE` | No | If set, registration requires this invite code |
 | `FREEPIK_API_KEY` | No | Freepik search / image generation |
+| `ALLOW_ANONYMOUS_AI_PROXY` | No | In **`production`**, `/api/generate`, `/api/stream`, and Freepik proxy routes **require a Bearer JWT** unless this is set to `true`. Default is locked down (prevents open abuse of your API keys). Development (non-production) still allows anonymous proxy calls when no database is configured. |
 | `PORT` | No | Listen port (default `3000`) |
 
 See `.env.example` for a template.
@@ -119,7 +120,7 @@ See `.env.example` for a template.
 
 Tazzet runs anywhere Node.js is available.
 
-**Railway / Render / Fly.io:** Set `ANTHROPIC_API_KEY`, `JWT_SECRET`, and `DATABASE_URL` (and any OAuth keys you use) in the dashboard. The server reads `process.env.PORT` automatically.
+**Railway / Render / Fly.io:** Set `NODE_ENV=production`, `ANTHROPIC_API_KEY`, `JWT_SECRET`, and `DATABASE_URL` (and any OAuth keys you use) in the dashboard. With `NODE_ENV=production`, AI and Freepik proxy routes require a signed-in user unless you deliberately set `ALLOW_ANONYMOUS_AI_PROXY=true` (unsafe on a public URL). The server reads `process.env.PORT` automatically.
 
 **Docker:**
 ```dockerfile

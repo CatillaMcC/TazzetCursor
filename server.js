@@ -221,8 +221,18 @@ function requireAuth(req, res, next) {
   req.user = payload;
   next();
 }
-/** When the database is in use, require JWT for costly proxy routes. Without DATABASE_URL, allow anonymous (local dev). */
+/**
+ * Costly proxy routes (Claude, Freepik): require JWT when DB is in use.
+ * Without DATABASE_URL, skip auth for local dev convenience.
+ * In production, always require JWT unless ALLOW_ANONYMOUS_AI_PROXY=true (public abuse risk).
+ */
 function requireAuthIfDb(req, res, next) {
+  const allowAnonymousProxy =
+    process.env.ALLOW_ANONYMOUS_AI_PROXY === 'true' ||
+    process.env.ALLOW_ANONYMOUS_AI_PROXY === '1';
+  if (process.env.NODE_ENV === 'production' && !allowAnonymousProxy) {
+    return requireAuth(req, res, next);
+  }
   if (!dbReady) return next();
   return requireAuth(req, res, next);
 }
@@ -283,6 +293,10 @@ window.TAZZET_PARAMS = ${JSON.stringify(params)};
 
 /* ── Health ── */
 app.get('/health', (_req, res) => {
+  const allowAnonProxy =
+    process.env.ALLOW_ANONYMOUS_AI_PROXY === 'true' ||
+    process.env.ALLOW_ANONYMOUS_AI_PROXY === '1';
+  const prod = process.env.NODE_ENV === 'production';
   const base = {
     status:            'ok',
     apiKeyConfigured:  Boolean(process.env.ANTHROPIC_API_KEY),
@@ -291,6 +305,8 @@ app.get('/health', (_req, res) => {
     authEnabled:       dbReady,
     googleSso:         Boolean(process.env.GOOGLE_CLIENT_ID),
     inviteRequired:    Boolean(process.env.TAZZET_INVITE_CODE),
+    /* True when /api/generate etc. accept requests without a Bearer JWT */
+    aiProxyAnonymousAllowed: !dbReady && (!prod || allowAnonProxy),
   };
   if (process.env.NODE_ENV !== 'production') {
     base.model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514';

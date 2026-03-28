@@ -70,39 +70,48 @@ Requires Node.js 18+ (uses the built-in `--watch` flag, no extra tools needed).
 
 ```
 tazzet/
-├── server.js          — Express server and /api/generate proxy
+├── server.js          — Express API, auth, DB, Claude/Freepik proxies
 ├── package.json
-├── .env.example       — Copy to .env and add your API key
+├── .env.example       — Copy to `.env` and configure (see table below)
 ├── .gitignore
 ├── README.md
 └── public/
-    └── index.html     — The full wizard front-end (self-contained)
+    ├── index.html     — Main wizard UI (self-contained)
+    ├── login.html
+    ├── auth-callback.html
+    ├── js/            — router, overrides, dots
+    └── css/
 ```
 
 ---
 
-## How the API proxy works
+## How Claude requests work
 
-The browser never sees the API key. All Claude calls go through:
+**Recommended (production):** Set `ANTHROPIC_API_KEY` on the server. The app can call `POST /api/generate`, `POST /api/stream`, and knowledge-article routes so the key stays on the server.
+
+**Optional (local / dev):** The wizard can also call Anthropic directly from the browser using a key stored in `sessionStorage` when no server key is configured. That is less secure (key visible to the page); prefer the server proxy for shared deployments.
 
 ```
 Browser → POST /api/generate  →  server.js  →  api.anthropic.com/v1/messages
-                                                        ↓
-Browser ← { text, model, usage }  ←  server.js  ←  response
 ```
-
-The server adds the `x-api-key` header server-side. The front-end only sends a `prompt` string to `/api/generate`.
 
 ---
 
 ## Environment variables
 
-| Variable            | Required | Default                        | Description                        |
-|---------------------|----------|--------------------------------|------------------------------------|
-| `ANTHROPIC_API_KEY` | Yes      | —                              | Your Anthropic API key             |
-| `CLAUDE_MODEL`      | No       | `claude-sonnet-4-20250514`     | Override the Claude model          |
-| `MAX_TOKENS`        | No       | `4000`                         | Max tokens for generation response |
-| `PORT`              | No       | `3000`                         | Port the server listens on         |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ANTHROPIC_API_KEY` | For server-side AI | Anthropic API key (used by `/api/generate`, `/api/stream`, knowledge routes) |
+| `JWT_SECRET` | **Yes in production** | Secret for signing session JWTs. Omit only for quick local dev (tokens reset on restart) |
+| `DATABASE_URL` | For auth & persistence | PostgreSQL connection string; without it, auth features are limited |
+| `DATABASE_SSL_REJECT_UNAUTHORIZED` | No | Set `true` when your DB TLS chain is trusted by Node (default is permissive for many cloud DBs) |
+| `CLAUDE_MODEL` | No | Defaults to `claude-sonnet-4-20250514` |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No | Google sign-in |
+| `TAZZET_INVITE_CODE` | No | If set, registration requires this invite code |
+| `FREEPIK_API_KEY` | No | Freepik search / image generation |
+| `PORT` | No | Listen port (default `3000`) |
+
+See `.env.example` for a template.
 
 ---
 
@@ -110,7 +119,7 @@ The server adds the `x-api-key` header server-side. The front-end only sends a `
 
 Tazzet runs anywhere Node.js is available.
 
-**Railway / Render / Fly.io:** Set `ANTHROPIC_API_KEY` as an environment variable in the dashboard. The server reads `process.env.PORT` automatically.
+**Railway / Render / Fly.io:** Set `ANTHROPIC_API_KEY`, `JWT_SECRET`, and `DATABASE_URL` (and any OAuth keys you use) in the dashboard. The server reads `process.env.PORT` automatically.
 
 **Docker:**
 ```dockerfile
@@ -129,8 +138,7 @@ CMD ["node", "server.js"]
 
 - **Add more scenarios:** Edit the `SCENARIOS` object in `public/index.html`
 - **Change the generation model:** Set `CLAUDE_MODEL` in `.env`
-- **Add streaming:** Replace the single-shot fetch in `server.js` with `stream: true` and pipe the SSE response to the browser
-- **Add authentication:** Add an Express middleware before the `/api/generate` route
+- **Streaming:** `POST /api/stream` in `server.js` already proxies SSE from Anthropic
 
 ---
 

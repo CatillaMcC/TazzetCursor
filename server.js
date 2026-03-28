@@ -19,7 +19,12 @@ const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', 1);
 
-const JWT_SECRET   = process.env.JWT_SECRET || 'change-this-in-production-' + Math.random();
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.error('[tazzet] FATAL: JWT_SECRET must be set in production.');
+  process.exit(1);
+}
+
+const JWT_SECRET   = process.env.JWT_SECRET || 'change-this-in-development-only-' + Math.random();
 const SALT_ROUNDS  = 12;
 const TOKEN_EXPIRY = '30d';
 
@@ -68,12 +73,18 @@ REFERENCE ARTICLE STRUCTURE:
 let db      = null;
 let dbReady = false;
 
+function postgresSslOption() {
+  const url = process.env.DATABASE_URL || '';
+  if (url.includes('localhost') || url.includes('127.0.0.1')) return false;
+  /* Managed Postgres often uses certs Node does not trust; set DATABASE_SSL_REJECT_UNAUTHORIZED=true when you have proper CA trust. */
+  const strict = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === 'true';
+  return { rejectUnauthorized: strict };
+}
+
 if (process.env.DATABASE_URL) {
   db = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL.includes('localhost')
-      ? false
-      : { rejectUnauthorized: false },
+    ssl: postgresSslOption(),
   });
   db.connect()
     .then(async client => {
